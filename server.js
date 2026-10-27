@@ -58,7 +58,10 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ id: 1, username: 'admin', name: 'المدير العام', role: 'admin', permissions: ['all'] });
 });
 
-// جميع مسارات الجداول بمحرك تكرار مدمج لتفادي أي أخطاء
+// مسار مخصص لتغطية طلبات الـ buffets من الواجهة الأمامية
+app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
+
+// مسارات الجداول الأساسية
 const tables = [
   'bookings', 'booking_archive', 'halls', 'packages', 'buffet_packages', 
   'buffet_items', 'buffet_addons', 'addons', 'contractors', 'expenses', 
