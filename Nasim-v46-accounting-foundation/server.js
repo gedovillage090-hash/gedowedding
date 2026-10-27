@@ -15,7 +15,7 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
-// إعداد اتصال Supabase بأسلوب آمن مع حماية الرابط من الأقواس
+// إعداد اتصال Supabase
 let rawUrl = process.env.SUPABASE_URL || 'https://iunfggqlwjvijmrirmgl.supabase.co';
 const SUPABASE_URL = rawUrl.replace(/[\[\]]/g, '').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_KEY || 'sb_secret_zD5B4amgiuR-ZVB7b55TdQ_G_7_oCq8').trim();
@@ -35,28 +35,33 @@ function auth(req, res, next) {
   }
 }
 
-// دالة حماية أوتوماتيكية لأي جدول حتى لا يرجع undefined أبداً للواجهة
+// دالة جلب البيانات مع حماية تامة
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
-    if (error) {
-      // إذا كان الجدول غير موجود نرجع مصفوفة فارغة لكي لا تتوقف الصفحة
-      return res.json([]);
-    }
+    if (error) return res.json([]);
     return res.json(data || []);
   } catch (err) {
     return res.json([]);
   }
 }
 
-// --- مسارات الـ Auth ---
+// مسار تسجيل الدخول المحدث (يقبل الكلمة المشفرة أو العادية)
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body || {};
   try {
     const { data: u, error } = await supabase.from('users').select('*').eq('username', String(username || '')).eq('active', 1).single();
-    if (error || !u || !bcrypt.compareSync(String(password || ''), u.password_hash)) {
+    
+    if (error || !u) {
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
     }
+
+    const isValid = bcrypt.compareSync(String(password || ''), u.password_hash) || String(password) === String(u.password_hash);
+
+    if (!isValid) {
+      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+
     const token = jwt.sign({ id: u.id, username: u.username, full_name: u.full_name, role: u.role }, secret, { expiresIn: '10h' });
     res.cookie('nasim_token', token, { httpOnly: true, sameSite: 'strict', secure: false, maxAge: 10 * 60 * 60 * 1000 });
     res.json({ id: u.id, username: u.username, name: u.full_name, role: u.role, permissions: JSON.parse(u.permissions || '[]') });
@@ -80,7 +85,7 @@ app.get('/api/me', auth, async (req, res) => {
   }
 });
 
-// --- كافة المسارات مع حماية شاملة من خطأ undefined/length ---
+// المسارات
 app.get('/api/bookings', auth, (req, res) => fetchSafeTable(res, 'bookings'));
 app.get('/api/booking_archive', auth, (req, res) => fetchSafeTable(res, 'booking_archive'));
 app.get('/api/halls', auth, (req, res) => fetchSafeTable(res, 'halls'));
