@@ -28,17 +28,18 @@ function auth(req, res, next) {
   }
 }
 
+// دالة جلب آمنة تضمن دائماً إرجاع مصفوفة (Array) لمنع أخطاء الـ .map و .length
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
-    if (error) return res.json([]);
-    return res.json(data || []);
+    if (error || !Array.isArray(data)) return res.json([]);
+    return res.json(data);
   } catch (err) {
     return res.json([]);
   }
 }
 
-// مسار تسجيل الدخول المباشر والمضمون 100%
+// مسار تسجيل الدخول المباشر والمضمون
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};
   if (String(username || '').trim() === 'admin' && String(password || '').trim() === 'admin123') {
@@ -58,10 +59,11 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ id: 1, username: 'admin', name: 'المدير العام', role: 'admin', permissions: ['all'] });
 });
 
-// مسار مخصص لتغطية طلبات الـ buffets من الواجهة الأمامية
+// المسارات الخاصة بالبوفيهات والعروض لتجنب أي نقص
 app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
+app.get('/api/buffet', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 
-// مسارات الجداول الأساسية
+// جميع مسارات الجداول الأساسية تلقائياً
 const tables = [
   'bookings', 'booking_archive', 'halls', 'packages', 'buffet_packages', 
   'buffet_items', 'buffet_addons', 'addons', 'contractors', 'expenses', 
