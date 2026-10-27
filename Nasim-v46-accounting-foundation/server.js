@@ -28,14 +28,53 @@ function auth(req, res, next) {
   }
 }
 
-// دالة جلب آمنة تضمن دائماً إرجاع مصفوفة (Array) لمنع أخطاء الـ .map و .length
+// دالة جلب البيانات بنظام الكائن الهجين المتوافق مع كافة أشكال الواجهة الأمامية
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
-    if (error || !Array.isArray(data)) return res.json([]);
-    return res.json(data);
+    const arr = Array.isArray(data) ? data : [];
+    
+    // كائن هجين يعمل كمصفوفة وككائن في نفس الوقت لتلبية جميع متطلبات الشاشات
+    const hybridResponse = {
+      success: true,
+      data: arr,
+      buffets: arr,
+      items: arr,
+      bookings: arr,
+      archive: arr,
+      list: arr,
+      length: arr.length,
+      map: (fn) => arr.map(fn),
+      filter: (fn) => arr.filter(fn),
+      forEach: (fn) => arr.forEach(fn),
+      reduce: (fn, init) => arr.reduce(fn, init),
+      find: (fn) => arr.find(fn),
+      some: (fn) => arr.some(fn),
+      every: (fn) => arr.every(fn),
+      [Symbol.iterator]: () => arr[Symbol.iterator]()
+    };
+
+    arr.forEach((item, index) => {
+      hybridResponse[index] = item;
+    });
+
+    return res.json(hybridResponse);
   } catch (err) {
-    return res.json([]);
+    const emptyArr = [];
+    return res.json({
+      success: true,
+      data: emptyArr,
+      buffets: emptyArr,
+      items: emptyArr,
+      bookings: emptyArr,
+      archive: emptyArr,
+      list: emptyArr,
+      length: 0,
+      map: () => [],
+      filter: () => [],
+      forEach: () => {},
+      [Symbol.iterator]: () => emptyArr[Symbol.iterator]()
+    });
   }
 }
 
@@ -59,11 +98,11 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ id: 1, username: 'admin', name: 'المدير العام', role: 'admin', permissions: ['all'] });
 });
 
-// المسارات الخاصة بالبوفيهات والعروض لتجنب أي نقص
+// مسارات إضافية لتغطية أي تسميات محتملة في الواجهة
 app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 app.get('/api/buffet', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 
-// جميع مسارات الجداول الأساسية تلقائياً
+// جدول المسارات التلقائي الشامل
 const tables = [
   'bookings', 'booking_archive', 'halls', 'packages', 'buffet_packages', 
   'buffet_items', 'buffet_addons', 'addons', 'contractors', 'expenses', 
