@@ -46,7 +46,7 @@ async function fetchSafeTable(res, tableName) {
   }
 }
 
-// مسار فحص الاتصال وقاعدة البيانات لتشخيص المشكلة
+// مسار فحص الاتصال وقاعدة البيانات
 app.get('/api/test-db', async (req, res) => {
   try {
     const { data, error } = await supabase.from('users').select('username, role, active');
@@ -57,7 +57,7 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// مسار تسجيل الدخول المتساهل (يقبل الكلمة المشفرة أو النصية مباشرة)
+// مسار تسجيل الدخول
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body || {};
   try {
@@ -88,4 +88,28 @@ app.post('/api/logout', (req, res) => {
 
 app.get('/api/me', auth, async (req, res) => {
   try {
-    const { data: u } = await supabase.from
+    const { data: u } = await supabase.from('users').select('*').eq('id', req.user.id).single();
+    if (!u) return res.status(401).json({ error: 'المستخدم غير موجود' });
+    res.json({ id: u.id, username: u.username, name: u.full_name, role: u.role, permissions: JSON.parse(u.permissions || '[]') });
+  } catch (e) {
+    res.status(500).json({ error: 'خطأ في الخادم' });
+  }
+});
+
+// مسارات الجداول
+app.get('/api/bookings', auth, (req, res) => fetchSafeTable(res, 'bookings'));
+app.get('/api/booking_archive', auth, (req, res) => fetchSafeTable(res, 'booking_archive'));
+app.get('/api/halls', auth, (req, res) => fetchSafeTable(res, 'halls'));
+app.get('/api/packages', auth, (req, res) => fetchSafeTable(res, 'packages'));
+app.get('/api/buffet_packages', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
+app.get('/api/buffet_items', auth, (req, res) => fetchSafeTable(res, 'buffet_items'));
+app.get('/api/buffet_addons', auth, (req, res) => fetchSafeTable(res, 'buffet_addons'));
+app.get('/api/addons', auth, (req, res) => fetchSafeTable(res, 'addons'));
+app.get('/api/contractors', auth, (req, res) => fetchSafeTable(res, 'contractors'));
+app.get('/api/expenses', auth, (req, res) => fetchSafeTable(res, 'expenses'));
+app.get('/api/inquiries', auth, (req, res) => fetchSafeTable(res, 'inquiries'));
+app.get('/api/notifications', auth, (req, res) => fetchSafeTable(res, 'notifications'));
+app.get('/api/safe_transactions', auth, (req, res) => fetchSafeTable(res, 'safe_transactions'));
+app.get('/api/inventory', auth, (req, res) => fetchSafeTable(res, 'inventory'));
+app.get('/api/work_orders', auth, (req, res) => fetchSafeTable(res, 'work_orders'));
+app.get('/api/offers', auth, (req, res) => fetchSafeTable(res
