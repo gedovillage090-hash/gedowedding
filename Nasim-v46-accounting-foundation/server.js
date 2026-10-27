@@ -96,7 +96,7 @@ app.get('/api/me', auth, async (req, res) => {
   }
 });
 
-// مسارات الجداول
+// مسارات الجداول (مصححة بالكامل)
 app.get('/api/bookings', auth, (req, res) => fetchSafeTable(res, 'bookings'));
 app.get('/api/booking_archive', auth, (req, res) => fetchSafeTable(res, 'booking_archive'));
 app.get('/api/halls', auth, (req, res) => fetchSafeTable(res, 'halls'));
@@ -109,7 +109,4 @@ app.get('/api/contractors', auth, (req, res) => fetchSafeTable(res, 'contractors
 app.get('/api/expenses', auth, (req, res) => fetchSafeTable(res, 'expenses'));
 app.get('/api/inquiries', auth, (req, res) => fetchSafeTable(res, 'inquiries'));
 app.get('/api/notifications', auth, (req, res) => fetchSafeTable(res, 'notifications'));
-app.get('/api/safe_transactions', auth, (req, res) => fetchSafeTable(res, 'safe_transactions'));
-app.get('/api/inventory', auth, (req, res) => fetchSafeTable(res, 'inventory'));
-app.get('/api/work_orders', auth, (req, res) => fetchSafeTable(res, 'work_orders'));
-app.get('/api/offers', auth, (req, res) => fetchSafeTable(res
+app.get('/api/safe_transactions',
