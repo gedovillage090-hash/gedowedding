@@ -28,14 +28,62 @@ function auth(req, res, next) {
   }
 }
 
-// دالة جلب البيانات لتُعيد مصفوفة حقيقية نقية متوافقة تماماً مع دوال .map و .filter
+// دالة جلب البيانات لتُعيد كئيناً هجيناً يحتوي على كافة المفاتيح المتوقعة في الواجهة الأمامية
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
-    if (error || !Array.isArray(data)) return res.json([]);
-    return res.json(data);
+    const arr = Array.isArray(data) ? data : [];
+    
+    return res.json({
+      success: true,
+      data: arr,
+      buffets: arr,
+      items: arr,
+      bookings: arr,
+      archive: arr,
+      list: arr,
+      offers: arr,
+      halls: arr,
+      packages: arr,
+      buffet_packages: arr,
+      buffet_items: arr,
+      buffet_addons: arr,
+      addons: arr,
+      contractors: arr,
+      expenses: arr,
+      inquiries: arr,
+      notifications: arr,
+      safe_transactions: arr,
+      inventory: arr,
+      work_orders: arr,
+      [tableName]: arr
+    });
   } catch (err) {
-    return res.json([]);
+    const empty = [];
+    return res.json({
+      success: true,
+      data: empty,
+      buffets: empty,
+      items: empty,
+      bookings: empty,
+      archive: empty,
+      list: empty,
+      offers: empty,
+      halls: empty,
+      packages: empty,
+      buffet_packages: empty,
+      buffet_items: empty,
+      buffet_addons: empty,
+      addons: empty,
+      contractors: empty,
+      expenses: empty,
+      inquiries: empty,
+      notifications: empty,
+      safe_transactions: empty,
+      inventory: empty,
+      work_orders: empty,
+      [tableName]: empty
+    });
   }
 }
 
@@ -63,7 +111,7 @@ app.get('/api/me', auth, (req, res) => {
 app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 app.get('/api/buffet', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 
-// جدول مسارات الجداول الأساسية
+// جدول المسارات الشامل
 const tables = [
   'bookings', 'booking_archive', 'halls', 'packages', 'buffet_packages', 
   'buffet_items', 'buffet_addons', 'addons', 'contractors', 'expenses', 
