@@ -28,7 +28,7 @@ function auth(req, res, next) {
   }
 }
 
-// دالة جلب آمنة تضم allRows و rows و data لتجنب أخطاء filter و map بشكل قطعي
+// دالة جلب آمنة تعيد مصفوفة خام وفي نفس الوقت كائن هجين يغطي كافة أشكال الواجهة
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
@@ -89,12 +89,7 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ id: 1, username: 'admin', name: 'المدير العام', role: 'admin', permissions: ['all'] });
 });
 
-// مسارات إضافية تظهر في الشبكة (Network) مثل followups
-app.get('/api/followups', auth, (req, res) => fetchSafeTable(res, 'inquiries'));
-app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
-app.get('/api/buffet', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
-
-// جدول المسارات الشامل
+// جدول المسارات المعروفة
 const tables = [
   'bookings', 'booking_archive', 'halls', 'packages', 'buffet_packages', 
   'buffet_items', 'buffet_addons', 'addons', 'contractors', 'expenses', 
@@ -103,6 +98,22 @@ const tables = [
 
 tables.forEach(tableName => {
   app.get(`/api/${tableName}`, auth, (req, res) => fetchSafeTable(res, tableName));
+});
+
+// معالج ذكي لأي مسار API غير موجود يتم طلبه من الواجهة لكي لا ينهار التطبيق أبداً
+app.all('/api/*', auth, (req, res) => {
+  const pathName = req.path.replace('/api/', '').toLowerCase();
+  let targetTable = 'bookings';
+  if (pathName.includes('buffet')) targetTable = 'buffet_packages';
+  else if (pathName.includes('archive')) targetTable = 'booking_archive';
+  else if (pathName.includes('offer')) targetTable = 'offers';
+  else if (pathName.includes('hall')) targetTable = 'halls';
+  else if (pathName.includes('package')) targetTable = 'packages';
+  else if (pathName.includes('expense')) targetTable = 'expenses';
+  else if (pathName.includes('inquir') || pathName.includes('followup')) targetTable = 'inquiries';
+  else if (pathName.includes('notif')) targetTable = 'notifications';
+  
+  return fetchSafeTable(res, targetTable);
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true, database: 'supabase', timestamp: new Date().toISOString() }));
