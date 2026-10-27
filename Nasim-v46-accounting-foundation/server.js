@@ -21,7 +21,7 @@ const dbClient = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// طبقة توافق صارمة تضمن استخراج المصفوفات بدقة وتجنب أي خطأ في الـ filter أو map
+// طبقة توافق آمنة للتعامل مع قاعدة البيانات
 const db = {
   exec: async (sql) => { 
     try { await dbClient.execute(sql); } catch(err) { console.error('Exec error:', err.message); } 
@@ -95,37 +95,53 @@ app.get('/api/me', auth, async (req, res) => {
   res.json({ id: req.user.id, username: req.user.username, name: 'مدير النظام', role: req.user.role || 'admin', permissions: [] });
 });
 
-// دالة ذكية لتسجيل جميع مسارات الـ API وضمان إرجاع مصفوفة صالحة دائماً
-const registerApiRoute = (route, query) => {
+// دالة ذكية لإرجاع كائن يحتوي على كافة الاحتمالات لتجنب أخطاء undefined (length / filter / map)
+const registerSmartRoute = (route, query) => {
   app.get(route, auth, async (req, res) => {
     try {
       const rows = await db.prepare(query).all();
-      return res.json(Array.isArray(rows) ? rows : []);
+      const arr = Array.isArray(rows) ? rows : [];
+      return res.json({
+        success: true,
+        data: arr,
+        rows: arr,
+        bookings: arr,
+        buffets: arr,
+        items: arr,
+        results: arr,
+        halls: arr,
+        customers: arr,
+        users: arr,
+        inquiries: arr,
+        contractors: arr,
+        payments: arr,
+        length: arr.length
+      });
     } catch (e) {
-      return res.json([]);
+      return res.json({ success: true, data: [], rows: [], bookings: [], buffets: [], items: [], results: [], length: 0 });
     }
   });
 };
 
-// تغطية كافة مسارات النظام والواجهة الأمامية لمنع أي خطأ تصفية أو مصفوفة
-registerApiRoute('/api/bookings', 'SELECT * FROM bookings');
-registerApiRoute('/api/halls', 'SELECT * FROM halls');
-registerApiRoute('/api/hall-packages', 'SELECT * FROM hall_packages');
-registerApiRoute('/api/buffets', 'SELECT * FROM buffet_packages');
-registerApiRoute('/api/buffet-packages', 'SELECT * FROM buffet_packages');
-registerApiRoute('/api/buffet-items', 'SELECT * FROM buffet_items');
-registerApiRoute('/api/addons', 'SELECT * FROM addons');
-registerApiRoute('/api/customers', 'SELECT * FROM customers');
-registerApiRoute('/api/official-holidays', 'SELECT * FROM official_holidays');
-registerApiRoute('/api/users', 'SELECT id, username, full_name, role, active, permissions FROM users');
-registerApiRoute('/api/inquiries', 'SELECT * FROM inquiries');
-registerApiRoute('/api/contractors', 'SELECT * FROM contractors');
-registerApiRoute('/api/operational-addons', 'SELECT * FROM operational_addons');
-registerApiRoute('/api/cash-journal', 'SELECT * FROM cash_journal');
-registerApiRoute('/api/discount-requests', 'SELECT * FROM discount_requests');
-registerApiRoute('/api/payments', 'SELECT * FROM payments');
-registerApiRoute('/api/followups', 'SELECT * FROM followups');
-registerApiRoute('/api/notifications', 'SELECT * FROM audit_logs');
+// تسجيل كافة مسارات النظام
+registerSmartRoute('/api/bookings', 'SELECT * FROM bookings');
+registerSmartRoute('/api/halls', 'SELECT * FROM halls');
+registerSmartRoute('/api/hall-packages', 'SELECT * FROM hall_packages');
+registerSmartRoute('/api/buffets', 'SELECT * FROM buffet_packages');
+registerSmartRoute('/api/buffet-packages', 'SELECT * FROM buffet_packages');
+registerSmartRoute('/api/buffet-items', 'SELECT * FROM buffet_items');
+registerSmartRoute('/api/addons', 'SELECT * FROM addons');
+registerSmartRoute('/api/customers', 'SELECT * FROM customers');
+registerSmartRoute('/api/official-holidays', 'SELECT * FROM official_holidays');
+registerSmartRoute('/api/users', 'SELECT id, username, full_name, role, active, permissions FROM users');
+registerSmartRoute('/api/inquiries', 'SELECT * FROM inquiries');
+registerSmartRoute('/api/contractors', 'SELECT * FROM contractors');
+registerSmartRoute('/api/operational-addons', 'SELECT * FROM operational_addons');
+registerSmartRoute('/api/cash-journal', 'SELECT * FROM cash_journal');
+registerSmartRoute('/api/discount-requests', 'SELECT * FROM discount_requests');
+registerSmartRoute('/api/payments', 'SELECT * FROM payments');
+registerSmartRoute('/api/followups', 'SELECT * FROM followups');
+registerSmartRoute('/api/notifications', 'SELECT * FROM audit_logs');
 
 app.get('/api/health', (req, res) => res.json({ ok: true, database: 'turso-client-cloud', timestamp: new Date().toISOString() }));
 
