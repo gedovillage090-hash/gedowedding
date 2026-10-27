@@ -28,7 +28,7 @@ function auth(req, res, next) {
   }
 }
 
-// دالة جلب آمنة تضمن دائماً إرجاع مصفوفة (Array) لمنع أخطاء الـ .map و .length
+// دالة جلب البيانات لتُعيد مصفوفة حقيقية نقية متوافقة تماماً مع دوال .map و .filter
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
@@ -59,11 +59,11 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ id: 1, username: 'admin', name: 'المدير العام', role: 'admin', permissions: ['all'] });
 });
 
-// المسارات الخاصة بالبوفيهات والعروض لتجنب أي نقص
+// مسارات إضافية للبوفيهات
 app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 app.get('/api/buffet', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 
-// جميع مسارات الجداول الأساسية تلقائياً
+// جدول مسارات الجداول الأساسية
 const tables = [
   'bookings', 'booking_archive', 'halls', 'packages', 'buffet_packages', 
   'buffet_items', 'buffet_addons', 'addons', 'contractors', 'expenses', 
