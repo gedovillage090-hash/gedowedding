@@ -15,13 +15,11 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
-// إعداد اتصال Supabase
 let rawUrl = process.env.SUPABASE_URL || 'https://iunfggqlwjvijmrirmgl.supabase.co';
 const SUPABASE_URL = rawUrl.replace(/[\[\]]/g, '').trim();
 const SUPABASE_KEY = (process.env.SUPABASE_KEY || 'sb_secret_zD5B4amgiuR-ZVB7b55TdQ_G_7_oCq8').trim();
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
 const secret = process.env.JWT_SECRET || 'local-dev-secret-change-before-production';
 
 function auth(req, res, next) {
@@ -35,7 +33,6 @@ function auth(req, res, next) {
   }
 }
 
-// دالة جلب البيانات مع حماية تامة
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
@@ -46,7 +43,6 @@ async function fetchSafeTable(res, tableName) {
   }
 }
 
-// مسار فحص الاتصال وقاعدة البيانات
 app.get('/api/test-db', async (req, res) => {
   try {
     const { data, error } = await supabase.from('users').select('username, role, active');
@@ -57,7 +53,6 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// مسار تسجيل الدخول
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body || {};
   try {
@@ -96,7 +91,6 @@ app.get('/api/me', auth, async (req, res) => {
   }
 });
 
-// مسارات الجداول (مصححة بالكامل)
 app.get('/api/bookings', auth, (req, res) => fetchSafeTable(res, 'bookings'));
 app.get('/api/booking_archive', auth, (req, res) => fetchSafeTable(res, 'booking_archive'));
 app.get('/api/halls', auth, (req, res) => fetchSafeTable(res, 'halls'));
@@ -109,4 +103,15 @@ app.get('/api/contractors', auth, (req, res) => fetchSafeTable(res, 'contractors
 app.get('/api/expenses', auth, (req, res) => fetchSafeTable(res, 'expenses'));
 app.get('/api/inquiries', auth, (req, res) => fetchSafeTable(res, 'inquiries'));
 app.get('/api/notifications', auth, (req, res) => fetchSafeTable(res, 'notifications'));
-app.get('/api/safe_transactions',
+app.get('/api/safe_transactions', auth, (req, res) => fetchSafeTable(res, 'safe_transactions'));
+app.get('/api/inventory', auth, (req, res) => fetchSafeTable(res, 'inventory'));
+app.get('/api/work_orders', auth, (req, res) => fetchSafeTable(res, 'work_orders'));
+app.get('/api/offers', auth, (req, res) => fetchSafeTable(res, 'offers'));
+
+app.get('/api/health', (req, res) => res.json({ ok: true, database: 'supabase', timestamp: new Date().toISOString() }));
+
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+const port = Number(process.env.PORT || 3000);
+app.listen(port, '0.0.0.0', () => console.log(`مجموعة النسيم تعمل عبر سحابة Supabase: http://localhost:${port}`));
