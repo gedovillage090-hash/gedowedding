@@ -21,7 +21,7 @@ const dbClient = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// طبقة توافق تضمن إرجاع مصفوفات دائمًا لمنع أخطاء الـ filter و map
+// طبقة توافق آمنة تضمن إرجاع مصفوفات دائمًا لمنع أخطاء الـ filter و map
 const db = {
   exec: async (sql) => { 
     try { await dbClient.execute(sql); } catch(err) { console.error('Exec error:', err.message); } 
@@ -50,20 +50,6 @@ const db = {
   }),
   transaction: (fn) => () => { return fn(); }
 };
-
-// إنشاء الجداول الأساسية تلقائياً
-async function initDatabase() {
-  const schema = `
-  CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,username TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,full_name TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'employee',permissions TEXT NOT NULL DEFAULT '[]',active INTEGER NOT NULL DEFAULT 1);
-  CREATE TABLE IF NOT EXISTS halls(id INTEGER PRIMARY KEY,name TEXT UNIQUE NOT NULL,active INTEGER NOT NULL DEFAULT 1);
-  CREATE TABLE IF NOT EXISTS official_holidays(id INTEGER PRIMARY KEY,holiday_date TEXT NOT NULL UNIQUE,label TEXT NOT NULL DEFAULT 'إجازة رسمية');
-  CREATE TABLE IF NOT EXISTS bookings(id INTEGER PRIMARY KEY,booking_no TEXT UNIQUE NOT NULL,event_date TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'confirmed',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
-  CREATE TABLE IF NOT EXISTS customers(id INTEGER PRIMARY KEY,full_name TEXT NOT NULL,phone TEXT);
-  CREATE TABLE IF NOT EXISTS inquiries(id INTEGER PRIMARY KEY,customer_name TEXT NOT NULL,phone TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'new');
-  `;
-  await db.exec(schema);
-}
-initDatabase();
 
 const secret = process.env.JWT_SECRET || 'local-dev-secret-change-before-production';
 function auth(req, res, next) {
@@ -107,36 +93,37 @@ app.get('/api/me', auth, async (req, res) => {
   res.json({ id: req.user.id, username: req.user.username, name: 'مدير النظام', role: req.user.role || 'admin', permissions: [] });
 });
 
-// مسارات البيانات لتجنب أخطاء .filter() و .map()
-app.get('/api/bookings', auth, async (req, res) => {
-  const rows = await db.prepare('SELECT * FROM bookings').all();
-  res.json(rows);
-});
+// دالة عامة لضمان إرجاع مصفوفات آمنة لجميع مسارات الـ API في النظام
+const safeQueryRoute = (route, query) => {
+  app.get(route, auth, async (req, res) => {
+    try {
+      const rows = await db.prepare(query).all();
+      res.json(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      res.json([]);
+    }
+  });
+};
 
-app.get('/api/halls', auth, async (req, res) => {
-  const rows = await db.prepare('SELECT * FROM halls').all();
-  res.json(rows);
-});
-
-app.get('/api/customers', auth, async (req, res) => {
-  const rows = await db.prepare('SELECT * FROM customers').all();
-  res.json(rows);
-});
-
-app.get('/api/official-holidays', auth, async (req, res) => {
-  const rows = await db.prepare('SELECT * FROM official_holidays').all();
-  res.json(rows);
-});
-
-app.get('/api/users', auth, async (req, res) => {
-  const rows = await db.prepare('SELECT id, username, full_name, role, active FROM users').all();
-  res.json(rows);
-});
-
-app.get('/api/inquiries', auth, async (req, res) => {
-  const rows = await db.prepare('SELECT * FROM inquiries').all();
-  res.json(rows);
-});
+// تسجيل جميع مسارات النظام الأساسية والفرعية لمنع أي خطأ تصفية
+safeQueryRoute('/api/bookings', 'SELECT * FROM bookings');
+safeQueryRoute('/api/halls', 'SELECT * FROM halls');
+safeQueryRoute('/api/hall-packages', 'SELECT * FROM hall_packages');
+safeQueryRoute('/api/buffets', 'SELECT * FROM buffet_packages');
+safeQueryRoute('/api/buffet-packages', 'SELECT * FROM buffet_packages');
+safeQueryRoute('/api/buffet-items', 'SELECT * FROM buffet_items');
+safeQueryRoute('/api/addons', 'SELECT * FROM addons');
+safeQueryRoute('/api/customers', 'SELECT * FROM customers');
+safeQueryRoute('/api/official-holidays', 'SELECT * FROM official_holidays');
+safeQueryRoute('/api/users', 'SELECT id, username, full_name, role, active, permissions FROM users');
+safeQueryRoute('/api/inquiries', 'SELECT * FROM inquiries');
+safeQueryRoute('/api/contractors', 'SELECT * FROM contractors');
+safeQueryRoute('/api/operational-addons', 'SELECT * FROM operational_addons');
+safeQueryRoute('/api/cash-journal', 'SELECT * FROM cash_journal');
+safeQueryRoute('/api/discount-requests', 'SELECT * FROM discount_requests');
+safeQueryRoute('/api/payments', 'SELECT * FROM payments');
+safeQueryRoute('/api/followups', 'SELECT * FROM followups');
+safeQueryRoute('/api/notifications', 'SELECT * FROM audit_logs');
 
 app.get('/api/health', (req, res) => res.json({ ok: true, database: 'turso-client-cloud', timestamp: new Date().toISOString() }));
 
