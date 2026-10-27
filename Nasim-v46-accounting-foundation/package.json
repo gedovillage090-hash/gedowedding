@@ -1,24 +1,25 @@
 {
-  "name": "nasim-wedding-local",
+  "name": "nasim-hall-management",
   "version": "1.0.0",
-  "private": true,
-  "description": "نظام مجموعة النسيم المحلي",
+  "description": "نظام إدارة مجموعة النسيم للقاعات والأفراح",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/app.js"
-  },
-  "engines": {
-    "node": ">=20"
+    "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@libsql/client": "^0.18.0",
-    "@libsql/sqlite3": "^0.3.1",
+    "@supabase/supabase-js": "^2.39.0",
     "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.7",
-    "express": "^4.21.2",
-    "helmet": "^8.0.0",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
