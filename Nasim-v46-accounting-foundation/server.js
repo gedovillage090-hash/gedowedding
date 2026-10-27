@@ -21,7 +21,7 @@ const dbClient = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// طبقة توافق آمنة تضمن إرجاع مصفوفات صافية دائماً
+// طبقة اتصال آمنة ومستقرة
 const db = {
   exec: async (sql) => { 
     try { await dbClient.execute(sql); } catch(err) { console.error('Exec error:', err.message); } 
@@ -95,40 +95,63 @@ app.get('/api/me', auth, async (req, res) => {
   res.json({ id: req.user.id, username: req.user.username, name: 'مدير النظام', role: req.user.role || 'admin', permissions: [] });
 });
 
-// دالة دقيقة ترجع مصفوفة صافية (Array) دائماً لكل مسارات النظام
-const registerArrayRoute = (route, query) => {
-  app.get(route, auth, async (req, res) => {
-    try {
-      const rows = await db.prepare(query).all();
-      return res.json(Array.isArray(rows) ? rows : []);
-    } catch (e) {
-      return res.json([]);
-    }
-  });
+// جدول مطابقة الأسماء لضمان جلب البيانات الصحيحة ديناميكياً
+const tableMap = {
+  'users': 'users',
+  'halls': 'halls',
+  'hall-packages': 'hall_packages',
+  'hall_packages': 'hall_packages',
+  'buffets': 'buffet_packages',
+  'buffet-packages': 'buffet_packages',
+  'buffet_packages': 'buffet_packages',
+  'buffet-items': 'buffet_items',
+  'buffet_items': 'buffet_items',
+  'addons': 'addons',
+  'customers': 'customers',
+  'bookings': 'bookings',
+  'booking-buffets': 'booking_buffets',
+  'booking_buffets': 'booking_buffets',
+  'booking-addons': 'booking_addons',
+  'booking_addons': 'booking_addons',
+  'discount-requests': 'discount_requests',
+  'discount_requests': 'discount_requests',
+  'payments': 'payments',
+  'audit-logs': 'audit_logs',
+  'audit_logs': 'audit_logs',
+  'inquiries': 'inquiries',
+  'followups': 'followups',
+  'inquiry-events': 'inquiry_events',
+  'inquiry_events': 'inquiry_events',
+  'official-holidays': 'official_holidays',
+  'official_holidays': 'official_holidays',
+  'operational-addons': 'operational_addons',
+  'operational_addons': 'operational_addons',
+  'booking-operational-addons': 'booking_operational_addons',
+  'booking_operational_addons': 'booking_operational_addons',
+  'contractors': 'contractors',
+  'booking-contractors': 'booking_contractors',
+  'booking_contractors': 'booking_contractors',
+  'cash-journal': 'cash_journal',
+  'cash_journal': 'cash_journal',
+  'contractor-payouts': 'contractor_payouts',
+  'contractor_payouts': 'contractor_payouts',
+  'expenses': 'cash_journal',
+  'finance': 'cash_journal',
+  'cashbox': 'cash_journal',
+  'notifications': 'audit_logs'
 };
 
-// تسجيل وتغطية كافة مسارات الـ API في النظام دون استثناء
-registerArrayRoute('/api/bookings', 'SELECT * FROM bookings');
-registerArrayRoute('/api/halls', 'SELECT * FROM halls');
-registerArrayRoute('/api/hall-packages', 'SELECT * FROM hall_packages');
-registerArrayRoute('/api/buffets', 'SELECT * FROM buffet_packages');
-registerArrayRoute('/api/buffet-packages', 'SELECT * FROM buffet_packages');
-registerArrayRoute('/api/buffet-items', 'SELECT * FROM buffet_items');
-registerArrayRoute('/api/addons', 'SELECT * FROM addons');
-registerArrayRoute('/api/customers', 'SELECT * FROM customers');
-registerArrayRoute('/api/official-holidays', 'SELECT * FROM official_holidays');
-registerArrayRoute('/api/users', 'SELECT id, username, full_name, role, active, permissions FROM users');
-registerArrayRoute('/api/inquiries', 'SELECT * FROM inquiries');
-registerArrayRoute('/api/contractors', 'SELECT * FROM contractors');
-registerArrayRoute('/api/operational-addons', 'SELECT * FROM operational_addons');
-registerArrayRoute('/api/cash-journal', 'SELECT * FROM cash_journal');
-registerArrayRoute('/api/discount-requests', 'SELECT * FROM discount_requests');
-registerArrayRoute('/api/payments', 'SELECT * FROM payments');
-registerArrayRoute('/api/followups', 'SELECT * FROM followups');
-registerArrayRoute('/api/notifications', 'SELECT * FROM audit_logs');
-registerArrayRoute('/api/expenses', 'SELECT * FROM cash_journal WHERE entry_type = "expense"');
-registerArrayRoute('/api/finance', 'SELECT * FROM cash_journal');
-registerArrayRoute('/api/cashbox', 'SELECT * FROM cash_journal');
+// نظام الـ API الديناميكي الشامل لأي مسار يتم طلبه
+app.get('/api/:entity', auth, async (req, res) => {
+  const entity = req.params.entity;
+  const tableName = tableMap[entity] || entity.replace(/-/g, '_');
+  try {
+    const rows = await db.prepare(`SELECT * FROM ${tableName}`).all();
+    return res.json(Array.isArray(rows) ? rows : []);
+  } catch (e) {
+    return res.json([]);
+  }
+});
 
 app.get('/api/health', (req, res) => res.json({ ok: true, database: 'turso-client-cloud', timestamp: new Date().toISOString() }));
 
