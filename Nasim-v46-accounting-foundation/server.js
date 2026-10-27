@@ -28,7 +28,7 @@ function auth(req, res, next) {
   }
 }
 
-// دالة جلب البيانات لتُعيد كئيناً هجيناً يحتوي على كافة المفاتيح المتوقعة في الواجهة الأمامية
+// دالة جلب آمنة تضم allRows و rows و data لتجنب أخطاء filter و map بشكل قطعي
 async function fetchSafeTable(res, tableName) {
   try {
     const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: false });
@@ -36,6 +36,8 @@ async function fetchSafeTable(res, tableName) {
     
     return res.json({
       success: true,
+      allRows: arr,
+      rows: arr,
       data: arr,
       buffets: arr,
       items: arr,
@@ -45,23 +47,14 @@ async function fetchSafeTable(res, tableName) {
       offers: arr,
       halls: arr,
       packages: arr,
-      buffet_packages: arr,
-      buffet_items: arr,
-      buffet_addons: arr,
-      addons: arr,
-      contractors: arr,
-      expenses: arr,
-      inquiries: arr,
-      notifications: arr,
-      safe_transactions: arr,
-      inventory: arr,
-      work_orders: arr,
       [tableName]: arr
     });
   } catch (err) {
     const empty = [];
     return res.json({
       success: true,
+      allRows: empty,
+      rows: empty,
       data: empty,
       buffets: empty,
       items: empty,
@@ -71,17 +64,6 @@ async function fetchSafeTable(res, tableName) {
       offers: empty,
       halls: empty,
       packages: empty,
-      buffet_packages: empty,
-      buffet_items: empty,
-      buffet_addons: empty,
-      addons: empty,
-      contractors: empty,
-      expenses: empty,
-      inquiries: empty,
-      notifications: empty,
-      safe_transactions: empty,
-      inventory: empty,
-      work_orders: empty,
       [tableName]: empty
     });
   }
@@ -107,7 +89,8 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ id: 1, username: 'admin', name: 'المدير العام', role: 'admin', permissions: ['all'] });
 });
 
-// مسارات إضافية للبوفيهات
+// مسارات إضافية تظهر في الشبكة (Network) مثل followups
+app.get('/api/followups', auth, (req, res) => fetchSafeTable(res, 'inquiries'));
 app.get('/api/buffets', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 app.get('/api/buffet', auth, (req, res) => fetchSafeTable(res, 'buffet_packages'));
 
