@@ -21,7 +21,7 @@ const dbClient = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// طبقة توافق آمنة تضمن إرجاع مصفوفات دائمًا لمنع أخطاء الـ filter و map
+// طبقة توافق صارمة تضمن استخراج المصفوفات بدقة وتجنب أي خطأ في الـ filter أو map
 const db = {
   exec: async (sql) => { 
     try { await dbClient.execute(sql); } catch(err) { console.error('Exec error:', err.message); } 
@@ -34,7 +34,7 @@ const db = {
     get: async (...params) => { 
       try {
         const res = await dbClient.execute({ sql, args: params });
-        return res.rows[0] || null;
+        return (res && res.rows && res.rows[0]) ? res.rows[0] : null;
       } catch(e) {
         return null;
       }
@@ -42,7 +42,9 @@ const db = {
     all: async (...params) => { 
       try {
         const res = await dbClient.execute({ sql, args: params });
-        return res.rows || [];
+        if (res && Array.isArray(res.rows)) return res.rows;
+        if (res && Array.isArray(res)) return res;
+        return [];
       } catch(e) {
         return [];
       }
@@ -93,37 +95,37 @@ app.get('/api/me', auth, async (req, res) => {
   res.json({ id: req.user.id, username: req.user.username, name: 'مدير النظام', role: req.user.role || 'admin', permissions: [] });
 });
 
-// دالة عامة لضمان إرجاع مصفوفات آمنة لجميع مسارات الـ API في النظام
-const safeQueryRoute = (route, query) => {
+// دالة ذكية لتسجيل جميع مسارات الـ API وضمان إرجاع مصفوفة صالحة دائماً
+const registerApiRoute = (route, query) => {
   app.get(route, auth, async (req, res) => {
     try {
       const rows = await db.prepare(query).all();
-      res.json(Array.isArray(rows) ? rows : []);
+      return res.json(Array.isArray(rows) ? rows : []);
     } catch (e) {
-      res.json([]);
+      return res.json([]);
     }
   });
 };
 
-// تسجيل جميع مسارات النظام الأساسية والفرعية لمنع أي خطأ تصفية
-safeQueryRoute('/api/bookings', 'SELECT * FROM bookings');
-safeQueryRoute('/api/halls', 'SELECT * FROM halls');
-safeQueryRoute('/api/hall-packages', 'SELECT * FROM hall_packages');
-safeQueryRoute('/api/buffets', 'SELECT * FROM buffet_packages');
-safeQueryRoute('/api/buffet-packages', 'SELECT * FROM buffet_packages');
-safeQueryRoute('/api/buffet-items', 'SELECT * FROM buffet_items');
-safeQueryRoute('/api/addons', 'SELECT * FROM addons');
-safeQueryRoute('/api/customers', 'SELECT * FROM customers');
-safeQueryRoute('/api/official-holidays', 'SELECT * FROM official_holidays');
-safeQueryRoute('/api/users', 'SELECT id, username, full_name, role, active, permissions FROM users');
-safeQueryRoute('/api/inquiries', 'SELECT * FROM inquiries');
-safeQueryRoute('/api/contractors', 'SELECT * FROM contractors');
-safeQueryRoute('/api/operational-addons', 'SELECT * FROM operational_addons');
-safeQueryRoute('/api/cash-journal', 'SELECT * FROM cash_journal');
-safeQueryRoute('/api/discount-requests', 'SELECT * FROM discount_requests');
-safeQueryRoute('/api/payments', 'SELECT * FROM payments');
-safeQueryRoute('/api/followups', 'SELECT * FROM followups');
-safeQueryRoute('/api/notifications', 'SELECT * FROM audit_logs');
+// تغطية كافة مسارات النظام والواجهة الأمامية لمنع أي خطأ تصفية أو مصفوفة
+registerApiRoute('/api/bookings', 'SELECT * FROM bookings');
+registerApiRoute('/api/halls', 'SELECT * FROM halls');
+registerApiRoute('/api/hall-packages', 'SELECT * FROM hall_packages');
+registerApiRoute('/api/buffets', 'SELECT * FROM buffet_packages');
+registerApiRoute('/api/buffet-packages', 'SELECT * FROM buffet_packages');
+registerApiRoute('/api/buffet-items', 'SELECT * FROM buffet_items');
+registerApiRoute('/api/addons', 'SELECT * FROM addons');
+registerApiRoute('/api/customers', 'SELECT * FROM customers');
+registerApiRoute('/api/official-holidays', 'SELECT * FROM official_holidays');
+registerApiRoute('/api/users', 'SELECT id, username, full_name, role, active, permissions FROM users');
+registerApiRoute('/api/inquiries', 'SELECT * FROM inquiries');
+registerApiRoute('/api/contractors', 'SELECT * FROM contractors');
+registerApiRoute('/api/operational-addons', 'SELECT * FROM operational_addons');
+registerApiRoute('/api/cash-journal', 'SELECT * FROM cash_journal');
+registerApiRoute('/api/discount-requests', 'SELECT * FROM discount_requests');
+registerApiRoute('/api/payments', 'SELECT * FROM payments');
+registerApiRoute('/api/followups', 'SELECT * FROM followups');
+registerApiRoute('/api/notifications', 'SELECT * FROM audit_logs');
 
 app.get('/api/health', (req, res) => res.json({ ok: true, database: 'turso-client-cloud', timestamp: new Date().toISOString() }));
 
